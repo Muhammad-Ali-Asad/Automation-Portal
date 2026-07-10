@@ -8,10 +8,10 @@ export default function AuthSimpleLayout({
     description,
 }: AuthLayoutProps) {
     return (
-        <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-[#07070d] p-6 md:p-10">
-            {/* Background glow */}
+        <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
+            {/* Subtle background glow (visible in dark mode) */}
             <div className="pointer-events-none fixed inset-0 flex items-center justify-center overflow-hidden">
-                <div className="h-[600px] w-[600px] rounded-full bg-blue-600/10 blur-[120px]" />
+                <div className="h-[600px] w-[600px] rounded-full bg-primary/5 blur-[120px]" />
             </div>
 
             <div className="relative w-full max-w-sm">
@@ -29,15 +29,15 @@ export default function AuthSimpleLayout({
                         </Link>
 
                         <div className="space-y-1.5 text-center">
-                            <h1 className="text-xl font-semibold text-white">{title}</h1>
-                            <p className="text-center text-sm text-gray-500">
+                            <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+                            <p className="text-center text-sm text-muted-foreground">
                                 {description}
                             </p>
                         </div>
                     </div>
 
                     {/* Card */}
-                    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-6 backdrop-blur-xl">
+                    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                         {children}
                     </div>
                 </div>
