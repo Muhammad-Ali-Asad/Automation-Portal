@@ -45,6 +45,10 @@ class AirtableService
         return $value;
     }
 
+    /**
+     * @param  callable(array<string, mixed>): array<string, mixed>  $mapper
+     * @return list<array<string, mixed>>
+     */
     private function paginate(string $baseId, string $tableId, string $token, callable $mapper): array
     {
         $records = [];
@@ -88,6 +92,10 @@ class AirtableService
         return $records;
     }
 
+    /**
+     * @param  array<string, mixed>  $record
+     * @return array<string, mixed>
+     */
     private function mapDraft(array $record): array
     {
         $fields = $record['fields'] ?? [];
@@ -106,6 +114,10 @@ class AirtableService
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $record
+     * @return array<string, mixed>
+     */
     private function mapEmail(array $record): array
     {
         $fields = $record['fields'] ?? [];
@@ -125,11 +137,17 @@ class AirtableService
         ];
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
     public function listDrafts(): array
     {
         return $this->paginate($this->baseId, $this->tableId, $this->token, [$this, 'mapDraft']);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getDraft(string $id): array
     {
         $response = Http::withToken($this->token)
@@ -142,11 +160,17 @@ class AirtableService
         return $this->mapDraft($response->json());
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
     public function listEmails(): array
     {
         return $this->paginate($this->emailBaseId, $this->emailTableId, $this->emailToken, [$this, 'mapEmail']);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function checkHealth(): array
     {
         if (! $this->token) {

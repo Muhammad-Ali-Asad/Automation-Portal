@@ -16,6 +16,10 @@ class N8nService
         $this->emailFormUrl = config('services.n8n.email_form_url', '');
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
     public function triggerLinkedIn(array $payload): array
     {
         if (! $this->webhookUrl) {
@@ -32,6 +36,10 @@ class N8nService
         ];
     }
 
+    /**
+     * @param  array<string, string>  $contact
+     * @return array<string, mixed>
+     */
     public function triggerEmail(array $contact): array
     {
         if (! $this->emailFormUrl) {
@@ -57,6 +65,9 @@ class N8nService
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function healthCheck(): array
     {
         if (! $this->webhookUrl) {
