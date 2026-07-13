@@ -13,14 +13,14 @@ class N8nController extends Controller
     public function contentRequest(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'topic'            => ['required', 'string', 'max:500'],
-            'keywords'           => ['nullable', 'string', 'max:500'],
-            'tone'               => ['nullable', 'string', 'in:professional,conversational,inspirational,educational'],
-            'postLength'         => ['nullable', 'string', 'in:short,medium,long'],
-            'targetAudience'     => ['nullable', 'string', 'max:200'],
-            'ctaType'            => ['nullable', 'string', 'in:comment,share,connect,visit_link,none'],
-            'includeHashtags'    => ['nullable', 'boolean'],
-            'additionalNotes'    => ['nullable', 'string', 'max:1000'],
+            'topic' => ['required', 'string', 'max:500'],
+            'keywords' => ['nullable', 'string', 'max:500'],
+            'tone' => ['nullable', 'string', 'in:professional,conversational,inspirational,educational'],
+            'postLength' => ['nullable', 'string', 'in:short,medium,long'],
+            'targetAudience' => ['nullable', 'string', 'max:200'],
+            'ctaType' => ['nullable', 'string', 'in:comment,share,connect,visit_link,none'],
+            'includeHashtags' => ['nullable', 'boolean'],
+            'additionalNotes' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $topic = trim($validated['topic']);
@@ -31,16 +31,16 @@ class N8nController extends Controller
         )));
 
         $payload = [
-            'topic'             => $topic,
-            'channel'           => 'linkedin',
-            'keywords'          => $keywordsRaw,
-            'keywords_list'     => $keywordsList,
-            'tone'              => $validated['tone'] ?? 'professional',
-            'post_length'       => $validated['postLength'] ?? 'medium',
-            'target_audience'   => trim((string) ($validated['targetAudience'] ?? '')),
-            'cta_type'          => $validated['ctaType'] ?? 'comment',
-            'include_hashtags'  => (bool) ($validated['includeHashtags'] ?? true),
-            'additional_notes'  => trim((string) ($validated['additionalNotes'] ?? '')),
+            'topic' => $topic,
+            'channel' => 'linkedin',
+            'keywords' => $keywordsRaw,
+            'keywords_list' => $keywordsList,
+            'tone' => $validated['tone'] ?? 'professional',
+            'post_length' => $validated['postLength'] ?? 'medium',
+            'target_audience' => trim((string) ($validated['targetAudience'] ?? '')),
+            'cta_type' => $validated['ctaType'] ?? 'comment',
+            'include_hashtags' => (bool) ($validated['includeHashtags'] ?? true),
+            'additional_notes' => trim((string) ($validated['additionalNotes'] ?? '')),
         ];
 
         try {
@@ -51,11 +51,12 @@ class N8nController extends Controller
                 if ($result['status'] === 404) {
                     $msg = 'n8n webhook not found (404). Re-publish the workflow in n8n.';
                 }
+
                 return response()->json(['error' => $msg, 'details' => $result['body']], $result['status']);
             }
 
             return response()->json([
-                'ok'      => true,
+                'ok' => true,
                 'message' => 'Request sent to n8n. Check n8n → Executions for the new run.',
             ]);
         } catch (\Throwable $e) {
@@ -66,7 +67,7 @@ class N8nController extends Controller
     public function emailRequest(Request $request): JsonResponse
     {
         $required = ['firstName', 'lastName', 'email', 'companyName', 'phone'];
-        $contact  = [];
+        $contact = [];
 
         foreach ($required as $field) {
             $val = trim((string) $request->input($field, ''));
@@ -84,11 +85,12 @@ class N8nController extends Controller
                 if ($result['status'] === 404) {
                     $msg = 'n8n form not found (404). Publish the Email Automation workflow and check N8N_EMAIL_FORM_URL.';
                 }
+
                 return response()->json(['error' => $msg], $result['status']);
             }
 
             return response()->json([
-                'ok'      => true,
+                'ok' => true,
                 'message' => 'Contact submitted. The workflow drafts the email and waits for Slack approval before sending.',
             ]);
         } catch (\Throwable $e) {
@@ -99,6 +101,7 @@ class N8nController extends Controller
     public function status(): JsonResponse
     {
         $result = $this->n8n->healthCheck();
+
         return response()->json($result, $result['ok'] ? 200 : 502);
     }
 }

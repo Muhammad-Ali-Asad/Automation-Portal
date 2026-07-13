@@ -7,18 +7,23 @@ use Illuminate\Support\Facades\Http;
 class AirtableService
 {
     private string $token;
+
     private string $baseId;
+
     private string $tableId;
+
     private string $emailToken;
+
     private string $emailBaseId;
+
     private string $emailTableId;
 
     public function __construct()
     {
-        $this->token       = config('services.airtable.token', '');
-        $this->baseId      = config('services.airtable.base_id', '');
-        $this->tableId     = config('services.airtable.table_id', '');
-        $this->emailToken  = config('services.airtable.email_token') ?: $this->token;
+        $this->token = config('services.airtable.token', '');
+        $this->baseId = config('services.airtable.base_id', '');
+        $this->tableId = config('services.airtable.table_id', '');
+        $this->emailToken = config('services.airtable.email_token') ?: $this->token;
         $this->emailBaseId = config('services.airtable.email_base_id', '');
         $this->emailTableId = config('services.airtable.email_table_id', '');
     }
@@ -26,7 +31,7 @@ class AirtableService
     private function normalizeImageUrl(?string $url): string
     {
         $value = trim($url ?? '');
-        if (!$value) {
+        if (! $value) {
             return '';
         }
 
@@ -43,7 +48,7 @@ class AirtableService
     private function paginate(string $baseId, string $tableId, string $token, callable $mapper): array
     {
         $records = [];
-        $offset  = null;
+        $offset = null;
 
         do {
             $params = ['pageSize' => 100];
@@ -56,7 +61,7 @@ class AirtableService
 
             if (! $response->successful()) {
                 $status = $response->status();
-                $body   = $response->body();
+                $body = $response->body();
 
                 if ($status === 401) {
                     throw new \RuntimeException('Airtable token rejected (401). Check your AIRTABLE_TOKEN in .env.');
@@ -85,19 +90,19 @@ class AirtableService
 
     private function mapDraft(array $record): array
     {
-        $fields      = $record['fields'] ?? [];
-        $channel     = $fields['Channel '] ?? $fields['Channel'] ?? $fields['channel'] ?? '';
+        $fields = $record['fields'] ?? [];
+        $channel = $fields['Channel '] ?? $fields['Channel'] ?? $fields['channel'] ?? '';
         $attachments = is_array($fields['Image'] ?? null) ? $fields['Image'] : [];
         $rawImageUrl = $attachments[0]['url'] ?? $fields['Image URL'] ?? '';
 
         return [
-            'id'           => $record['id'],
-            'topic'        => $fields['Topic'] ?? '',
-            'channel'      => strtolower((string) $channel),
+            'id' => $record['id'],
+            'topic' => $fields['Topic'] ?? '',
+            'channel' => strtolower((string) $channel),
             'draftContent' => $fields['Draft Content'] ?? '',
-            'status'       => $fields['Status'] ?? 'Draft',
-            'imageUrl'     => $this->normalizeImageUrl($rawImageUrl),
-            'createdAt'    => $fields['Created At'] ?? $record['createdTime'] ?? null,
+            'status' => $fields['Status'] ?? 'Draft',
+            'imageUrl' => $this->normalizeImageUrl($rawImageUrl),
+            'createdAt' => $fields['Created At'] ?? $record['createdTime'] ?? null,
         ];
     }
 
@@ -106,17 +111,17 @@ class AirtableService
         $fields = $record['fields'] ?? [];
 
         return [
-            'id'          => $record['id'],
-            'firstName'   => $fields['First Name'] ?? '',
-            'lastName'    => $fields['Last Name'] ?? '',
-            'email'       => $fields['Email'] ?? '',
-            'phone'       => $fields['Phone Number'] ?? '',
+            'id' => $record['id'],
+            'firstName' => $fields['First Name'] ?? '',
+            'lastName' => $fields['Last Name'] ?? '',
+            'email' => $fields['Email'] ?? '',
+            'phone' => $fields['Phone Number'] ?? '',
             'companyName' => $fields['Company Name'] ?? '',
-            'painPoints'  => $fields['Pain points'] ?? '',
-            'hook'        => $fields['Hook'] ?? '',
-            'finalEmail'  => $fields['Final Email'] ?? '',
-            'decision'    => $fields['Decision'] ?? '',
-            'createdAt'   => $fields['Time Stamp'] ?? $record['createdTime'] ?? null,
+            'painPoints' => $fields['Pain points'] ?? '',
+            'hook' => $fields['Hook'] ?? '',
+            'finalEmail' => $fields['Final Email'] ?? '',
+            'decision' => $fields['Decision'] ?? '',
+            'createdAt' => $fields['Time Stamp'] ?? $record['createdTime'] ?? null,
         ];
     }
 

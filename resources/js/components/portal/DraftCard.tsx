@@ -18,7 +18,11 @@ function parseDraftContent(raw: string): DraftContent | null {
 
 function getPreviewText(draft: Draft): string {
     const parsed = parseDraftContent(draft.draftContent);
-    if (!parsed) return draft.draftContent || 'No content yet';
+
+    if (!parsed) {
+        return draft.draftContent || 'No content yet';
+    }
+
     return parsed.post_text || parsed.hook || draft.draftContent;
 }
 
@@ -29,7 +33,11 @@ export function DraftCard({ draft, index, onClick }: Props) {
         <motion.article
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: index * 0.04, ease: 'easeOut' }}
+            transition={{
+                duration: 0.25,
+                delay: index * 0.04,
+                ease: 'easeOut',
+            }}
             whileHover={{ y: -3, transition: { duration: 0.15 } }}
             className="group cursor-pointer overflow-hidden rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-md"
             onClick={() => onClick(draft)}
@@ -44,19 +52,19 @@ export function DraftCard({ draft, index, onClick }: Props) {
                 </div>
             )}
 
-            <div className="p-4 space-y-3">
+            <div className="space-y-3 p-4">
                 <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center rounded-md border bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                    <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                         LinkedIn
                     </span>
                     <StatusBadge status={draft.status} />
                 </div>
 
-                <h3 className="line-clamp-2 font-semibold leading-snug">
+                <h3 className="line-clamp-2 leading-snug font-semibold">
                     {draft.topic || 'Untitled draft'}
                 </h3>
 
-                <p className="line-clamp-3 text-sm text-muted-foreground leading-relaxed">
+                <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
                     {preview}
                 </p>
 

@@ -15,9 +15,11 @@ export interface DraftContent {
     hashtags?: string[];
 }
 
-export type PostTone = 'professional' | 'conversational' | 'inspirational' | 'educational';
+export type PostTone =
+    'professional' | 'conversational' | 'inspirational' | 'educational';
 export type PostLength = 'short' | 'medium' | 'long';
-export type PostCtaType = 'comment' | 'share' | 'connect' | 'visit_link' | 'none';
+export type PostCtaType =
+    'comment' | 'share' | 'connect' | 'visit_link' | 'none';
 
 export interface ContentRequestPayload {
     topic: string;

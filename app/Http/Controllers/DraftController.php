@@ -37,6 +37,7 @@ class DraftController extends Controller
     public function health(): JsonResponse
     {
         $result = $this->airtable->checkHealth();
+
         return response()->json($result, $result['ok'] ? 200 : 500);
     }
 }

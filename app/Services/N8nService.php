@@ -7,11 +7,12 @@ use Illuminate\Support\Facades\Http;
 class N8nService
 {
     private string $webhookUrl;
+
     private string $emailFormUrl;
 
     public function __construct()
     {
-        $this->webhookUrl   = config('services.n8n.webhook_url', '');
+        $this->webhookUrl = config('services.n8n.webhook_url', '');
         $this->emailFormUrl = config('services.n8n.email_form_url', '');
     }
 
@@ -25,9 +26,9 @@ class N8nService
             ->post($this->webhookUrl, $payload);
 
         return [
-            'ok'     => $response->successful(),
+            'ok' => $response->successful(),
             'status' => $response->status(),
-            'body'   => $response->json() ?? ['raw' => $response->body()],
+            'body' => $response->json() ?? ['raw' => $response->body()],
         ];
     }
 
@@ -50,9 +51,9 @@ class N8nService
             ]);
 
         return [
-            'ok'     => $response->successful(),
+            'ok' => $response->successful(),
             'status' => $response->status(),
-            'body'   => $response->body(),
+            'body' => $response->body(),
         ];
     }
 
@@ -64,27 +65,27 @@ class N8nService
 
         try {
             $parsed = parse_url($this->webhookUrl);
-            $origin = ($parsed['scheme'] ?? 'http') . '://' . ($parsed['host'] ?? 'localhost');
+            $origin = ($parsed['scheme'] ?? 'http').'://'.($parsed['host'] ?? 'localhost');
             if (! empty($parsed['port'])) {
-                $origin .= ':' . $parsed['port'];
+                $origin .= ':'.$parsed['port'];
             }
 
             $response = Http::timeout(5)->get("{$origin}/healthz");
 
             return [
-                'ok'          => $response->successful(),
-                'configured'  => true,
-                'n8nRunning'  => $response->successful(),
-                'webhookUrl'  => $this->webhookUrl,
+                'ok' => $response->successful(),
+                'configured' => true,
+                'n8nRunning' => $response->successful(),
+                'webhookUrl' => $this->webhookUrl,
                 'emailFormUrl' => $this->emailFormUrl ?: null,
-                'n8nOrigin'   => $origin,
+                'n8nOrigin' => $origin,
             ];
         } catch (\Throwable $e) {
             return [
-                'ok'         => false,
+                'ok' => false,
                 'configured' => true,
                 'n8nRunning' => false,
-                'error'      => $e->getMessage(),
+                'error' => $e->getMessage(),
             ];
         }
     }
