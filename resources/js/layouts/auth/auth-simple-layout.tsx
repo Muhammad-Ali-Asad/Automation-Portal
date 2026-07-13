@@ -23,9 +23,9 @@ export default function AuthSimpleLayout({
                             className="flex flex-col items-center gap-2 font-medium"
                         >
                             <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-500/25">
-                                <span className="text-sm font-bold text-white">M</span>
+                                <span className="text-xs font-bold text-white">SP</span>
                             </div>
-                            <span className="sr-only">Mezz Portal</span>
+                            <span className="sr-only">SP Automation Portal</span>
                         </Link>
 
                         <div className="space-y-1.5 text-center">

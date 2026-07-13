@@ -116,5 +116,5 @@ export default function Register({ passwordRules }: Props) {
 
 Register.layout = {
     title: 'Create a portal account',
-    description: 'Enter your details to register for the Mezz Automation Portal',
+    description: 'Enter your details to register for SP Automation Portal',
 };

@@ -15,6 +15,21 @@ export interface DraftContent {
     hashtags?: string[];
 }
 
+export type PostTone = 'professional' | 'conversational' | 'inspirational' | 'educational';
+export type PostLength = 'short' | 'medium' | 'long';
+export type PostCtaType = 'comment' | 'share' | 'connect' | 'visit_link' | 'none';
+
+export interface ContentRequestPayload {
+    topic: string;
+    keywords: string;
+    tone: PostTone;
+    postLength: PostLength;
+    targetAudience: string;
+    ctaType: PostCtaType;
+    includeHashtags: boolean;
+    additionalNotes: string;
+}
+
 export interface EmailRecord {
     id: string;
     firstName: string;

@@ -4,11 +4,21 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { DraftCard } from '@/components/portal/DraftCard';
 import { DetailModal } from '@/components/portal/DetailModal';
 import { SkeletonCard } from '@/components/portal/SkeletonCard';
+import type { ContentRequestPayload } from '@/types/portal';
 import type { Draft } from '@/types/portal';
 
 const AIRTABLE_BASE_ID = 'appSo3isRscpSyhRP';
@@ -20,14 +30,32 @@ const FILTERS = [
     { label: 'Rejected', value: 'Rejected' },
 ];
 
+const DEFAULT_FORM: ContentRequestPayload = {
+    topic: '',
+    keywords: '',
+    tone: 'professional',
+    postLength: 'medium',
+    targetAudience: '',
+    ctaType: 'comment',
+    includeHashtags: true,
+    additionalNotes: '',
+};
+
 export default function LinkedIn() {
     const [drafts, setDrafts] = useState<Draft[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
     const [selectedDraft, setSelectedDraft] = useState<Draft | null>(null);
 
-    const [topic, setTopic] = useState('');
+    const [form, setForm] = useState<ContentRequestPayload>(DEFAULT_FORM);
     const [submitting, setSubmitting] = useState(false);
+
+    function updateForm<K extends keyof ContentRequestPayload>(
+        key: K,
+        value: ContentRequestPayload[K],
+    ) {
+        setForm((prev) => ({ ...prev, [key]: value }));
+    }
 
     const loadDrafts = useCallback(async (silent = false) => {
         if (!silent) setLoading(true);
@@ -65,19 +93,19 @@ export default function LinkedIn() {
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!topic.trim()) return;
+        if (!form.topic.trim()) return;
         setSubmitting(true);
         try {
             const res = await fetch('/api/content-request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic }),
+                body: JSON.stringify(form),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Request failed');
             toast.success(data.message || 'Request sent to n8n.');
-            pollForNewDraft(topic.trim());
-            setTopic('');
+            pollForNewDraft(form.topic.trim());
+            setForm(DEFAULT_FORM);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Request failed';
             toast.error(message);
@@ -101,18 +129,128 @@ export default function LinkedIn() {
                     <p className="mb-4 text-sm text-muted-foreground">
                         The agent researches the topic, writes a draft, briefs the designer, and waits for your approval before publishing.
                     </p>
-                    <form onSubmit={handleSubmit} className="space-y-3">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="space-y-1.5">
-                            <Label htmlFor="topic">Topic</Label>
+                            <Label htmlFor="topic">Topic *</Label>
                             <Textarea
                                 id="topic"
                                 rows={3}
-                                placeholder="e.g. How Mezz helps with PCB prototyping"
-                                value={topic}
-                                onChange={(e) => setTopic(e.target.value)}
+                                placeholder="e.g. How AI is transforming custom software development"
+                                value={form.topic}
+                                onChange={(e) => updateForm('topic', e.target.value)}
                                 required
                             />
                         </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="keywords">Keywords</Label>
+                            <Input
+                                id="keywords"
+                                placeholder="e.g. AI automation, SaaS, Laravel, PCB design"
+                                value={form.keywords}
+                                onChange={(e) => updateForm('keywords', e.target.value)}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Comma-separated words or phrases to weave into the post and hashtags.
+                            </p>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="space-y-1.5">
+                                <Label>Tone</Label>
+                                <Select
+                                    value={form.tone}
+                                    onValueChange={(value) =>
+                                        updateForm('tone', value as ContentRequestPayload['tone'])
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select tone" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="professional">Professional</SelectItem>
+                                        <SelectItem value="conversational">Conversational</SelectItem>
+                                        <SelectItem value="inspirational">Inspirational</SelectItem>
+                                        <SelectItem value="educational">Educational</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label>Post length</Label>
+                                <Select
+                                    value={form.postLength}
+                                    onValueChange={(value) =>
+                                        updateForm('postLength', value as ContentRequestPayload['postLength'])
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select length" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="short">Short (~100 words)</SelectItem>
+                                        <SelectItem value="medium">Medium (~200 words)</SelectItem>
+                                        <SelectItem value="long">Long (~350 words)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label>Call to action</Label>
+                                <Select
+                                    value={form.ctaType}
+                                    onValueChange={(value) =>
+                                        updateForm('ctaType', value as ContentRequestPayload['ctaType'])
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select CTA" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="comment">Ask for comments</SelectItem>
+                                        <SelectItem value="share">Encourage shares</SelectItem>
+                                        <SelectItem value="connect">Invite connections</SelectItem>
+                                        <SelectItem value="visit_link">Drive to a link</SelectItem>
+                                        <SelectItem value="none">No CTA</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="targetAudience">Target audience</Label>
+                                <Input
+                                    id="targetAudience"
+                                    placeholder="e.g. CTOs, startup founders"
+                                    value={form.targetAudience}
+                                    onChange={(e) => updateForm('targetAudience', e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="additionalNotes">Additional context</Label>
+                            <Textarea
+                                id="additionalNotes"
+                                rows={2}
+                                placeholder="Optional: angle to take, stats to mention, things to avoid…"
+                                value={form.additionalNotes}
+                                onChange={(e) => updateForm('additionalNotes', e.target.value)}
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id="includeHashtags"
+                                checked={form.includeHashtags}
+                                onCheckedChange={(checked) =>
+                                    updateForm('includeHashtags', checked === true)
+                                }
+                            />
+                            <Label htmlFor="includeHashtags" className="cursor-pointer font-normal">
+                                Include relevant hashtags in the draft
+                            </Label>
+                        </div>
+
                         <div className="flex justify-end">
                             <Button type="submit" disabled={submitting}>
                                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

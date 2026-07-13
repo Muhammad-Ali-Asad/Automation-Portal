@@ -89,7 +89,7 @@ export default function Welcome() {
 
     return (
         <>
-            <Head title="Welcome to Mezz Portal" />
+            <Head title="Welcome to SP Automation Portal" />
             <div className="min-h-screen bg-[#07070d] text-white antialiased">
 
                 {/* ── Navbar ── */}
@@ -97,10 +97,10 @@ export default function Welcome() {
                     <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
                         <div className="flex items-center gap-3">
                             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-500/25">
-                                <span className="text-sm font-bold text-white">M</span>
+                                <span className="text-xs font-bold text-white">SP</span>
                             </div>
                             <span className="text-base font-semibold tracking-tight text-white">
-                                Mezz Portal
+                                SP Automation Portal
                             </span>
                         </div>
                         <nav className="flex items-center gap-2">
@@ -259,7 +259,7 @@ export default function Welcome() {
                                 Ready to Get Started?
                             </h2>
                             <p className="mb-8 text-gray-400">
-                                Join the portal and put your content and outreach on autopilot.
+                                Join SP Automation Portal and put your content and outreach on autopilot.
                             </p>
                             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                                 <Link
@@ -290,9 +290,9 @@ export default function Welcome() {
                     <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-sm text-gray-600 sm:flex-row">
                         <div className="flex items-center gap-2">
                             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-violet-600">
-                                <span className="text-[10px] font-bold text-white">M</span>
+                                <span className="text-[9px] font-bold text-white">SP</span>
                             </div>
-                            <span>Mezz Portal</span>
+                            <span>SP Automation Portal</span>
                             <span className="text-gray-700">·</span>
                             <span>Built by</span>
                             <a

@@ -174,7 +174,7 @@ export default function Dashboard() {
                 <div className="flex flex-col gap-1">
                     <h1 className="text-2xl font-bold text-foreground">{greeting} 👋</h1>
                     <p className="text-sm text-muted-foreground">
-                        Here's what's happening in your automation portal today.
+                        Here's what's happening in SP Automation Portal today.
                     </p>
                 </div>
 

@@ -15,14 +15,14 @@ class N8nService
         $this->emailFormUrl = config('services.n8n.email_form_url', '');
     }
 
-    public function triggerLinkedIn(string $topic): array
+    public function triggerLinkedIn(array $payload): array
     {
         if (! $this->webhookUrl) {
             throw new \RuntimeException('N8N_WEBHOOK_URL is not configured in .env');
         }
 
         $response = Http::withHeaders(['Content-Type' => 'application/json'])
-            ->post($this->webhookUrl, ['topic' => $topic, 'channel' => 'linkedin']);
+            ->post($this->webhookUrl, $payload);
 
         return [
             'ok'     => $response->successful(),

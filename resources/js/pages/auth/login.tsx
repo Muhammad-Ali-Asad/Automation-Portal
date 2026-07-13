@@ -112,6 +112,6 @@ export default function Login({ status, canResetPassword }: Props) {
 }
 
 Login.layout = {
-    title: 'Sign in to Mezz Portal',
+    title: 'Sign in to SP Automation Portal',
     description: 'Enter your credentials to access the automation portal',
 };
