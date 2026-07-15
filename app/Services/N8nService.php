@@ -12,8 +12,8 @@ class N8nService
 
     public function __construct()
     {
-        $this->webhookUrl = config('services.n8n.webhook_url', '');
-        $this->emailFormUrl = config('services.n8n.email_form_url', '');
+        $this->webhookUrl = (string) (config('services.n8n.webhook_url') ?? '');
+        $this->emailFormUrl = (string) (config('services.n8n.email_form_url') ?? '');
     }
 
     /**

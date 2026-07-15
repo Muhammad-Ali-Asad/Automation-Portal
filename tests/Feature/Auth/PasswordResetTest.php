@@ -38,6 +38,27 @@ class PasswordResetTest extends TestCase
         Notification::assertSentTo($user, ResetPassword::class);
     }
 
+    public function test_reset_link_is_shown_when_using_log_mailer(): void
+    {
+        config(['mail.default' => 'log']);
+
+        $user = User::factory()->create();
+
+        $response = $this->from(route('password.request'))
+            ->post(route('password.email'), ['email' => $user->email]);
+
+        $response->assertSessionHas('status');
+        $response->assertSessionHas('password_reset_url');
+
+        $this->followRedirects($response)
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('auth/forgot-password')
+                ->where('mailDriver', 'log')
+                ->has('resetUrl')
+            );
+    }
+
     public function test_reset_password_screen_can_be_rendered()
     {
         Notification::fake();

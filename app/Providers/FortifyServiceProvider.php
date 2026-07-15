@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -32,6 +33,27 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
+        $this->configurePasswordResetLinks();
+    }
+
+    /**
+     * When mail is the "log" driver (local default), emails never leave the machine.
+     * Expose the reset URL in-session so the forgot-password page stays usable.
+     */
+    private function configurePasswordResetLinks(): void
+    {
+        ResetPassword::createUrlUsing(function (object $notifiable, string $token): string {
+            $url = url(route('password.reset', [
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ], false));
+
+            if (config('mail.default') === 'log' && ! app()->isProduction()) {
+                session(['password_reset_url' => $url]);
+            }
+
+            return $url;
+        });
     }
 
     /**
@@ -61,6 +83,8 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::requestPasswordResetLinkView(fn (Request $request) => Inertia::render('auth/forgot-password', [
             'status' => $request->session()->get('status'),
+            'resetUrl' => $request->session()->pull('password_reset_url'),
+            'mailDriver' => config('mail.default'),
         ]));
 
         Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/verify-email', [

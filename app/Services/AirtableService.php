@@ -20,12 +20,13 @@ class AirtableService
 
     public function __construct()
     {
-        $this->token = config('services.airtable.token', '');
-        $this->baseId = config('services.airtable.base_id', '');
-        $this->tableId = config('services.airtable.table_id', '');
-        $this->emailToken = config('services.airtable.email_token') ?: $this->token;
-        $this->emailBaseId = config('services.airtable.email_base_id', '');
-        $this->emailTableId = config('services.airtable.email_table_id', '');
+        // Coalesce nulls: config defaults don't replace an existing null from env()
+        $this->token = (string) (config('services.airtable.token') ?? '');
+        $this->baseId = (string) (config('services.airtable.base_id') ?? '');
+        $this->tableId = (string) (config('services.airtable.table_id') ?? '');
+        $this->emailToken = (string) (config('services.airtable.email_token') ?: $this->token);
+        $this->emailBaseId = (string) (config('services.airtable.email_base_id') ?? '');
+        $this->emailTableId = (string) (config('services.airtable.email_table_id') ?? '');
     }
 
     private function normalizeImageUrl(?string $url): string
@@ -142,6 +143,8 @@ class AirtableService
      */
     public function listDrafts(): array
     {
+        $this->ensureConfigured($this->token, $this->baseId, $this->tableId, 'AIRTABLE_TOKEN / AIRTABLE_BASE_ID / AIRTABLE_TABLE_ID');
+
         return $this->paginate($this->baseId, $this->tableId, $this->token, [$this, 'mapDraft']);
     }
 
@@ -150,6 +153,8 @@ class AirtableService
      */
     public function getDraft(string $id): array
     {
+        $this->ensureConfigured($this->token, $this->baseId, $this->tableId, 'AIRTABLE_TOKEN / AIRTABLE_BASE_ID / AIRTABLE_TABLE_ID');
+
         $response = Http::withToken($this->token)
             ->get("https://api.airtable.com/v0/{$this->baseId}/{$this->tableId}/{$id}");
 
@@ -165,7 +170,21 @@ class AirtableService
      */
     public function listEmails(): array
     {
+        $this->ensureConfigured(
+            $this->emailToken,
+            $this->emailBaseId,
+            $this->emailTableId,
+            'EMAIL_AIRTABLE_TOKEN (or AIRTABLE_TOKEN) / EMAIL_AIRTABLE_BASE_ID / EMAIL_AIRTABLE_TABLE_ID'
+        );
+
         return $this->paginate($this->emailBaseId, $this->emailTableId, $this->emailToken, [$this, 'mapEmail']);
+    }
+
+    private function ensureConfigured(string $token, string $baseId, string $tableId, string $keys): void
+    {
+        if ($token === '' || $baseId === '' || $tableId === '') {
+            throw new \RuntimeException("Airtable is not configured. Set {$keys} in your .env file.");
+        }
     }
 
     /**

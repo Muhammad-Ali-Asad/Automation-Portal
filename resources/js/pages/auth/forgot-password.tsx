@@ -9,14 +9,36 @@ import { Label } from '@/components/ui/label';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
 
-export default function ForgotPassword({ status }: { status?: string }) {
+type Props = {
+    status?: string;
+    resetUrl?: string | null;
+    mailDriver?: string;
+};
+
+export default function ForgotPassword({ status, resetUrl, mailDriver }: Props) {
+    const usingLogMailer = mailDriver === 'log';
+
     return (
         <>
             <Head title="Forgot password" />
 
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
-                    {status}
+                <div className="mb-4 space-y-3 text-center text-sm font-medium text-green-600">
+                    <p>{status}</p>
+                    {usingLogMailer && (
+                        <p className="text-xs font-normal text-muted-foreground">
+                            Local mailer is set to <code className="rounded bg-muted px-1">log</code>, so nothing is
+                            delivered to Gmail. Use the link below, or switch <code className="rounded bg-muted px-1">MAIL_MAILER</code> to
+                            SMTP in <code className="rounded bg-muted px-1">.env</code>.
+                        </p>
+                    )}
+                    {resetUrl && (
+                        <p className="text-left text-xs font-normal break-all text-foreground">
+                            <a href={resetUrl} className="underline underline-offset-4">
+                                Open password reset link
+                            </a>
+                        </p>
+                    )}
                 </div>
             )}
 

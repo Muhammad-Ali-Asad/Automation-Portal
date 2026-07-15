@@ -36,17 +36,17 @@ return [
     ],
 
     'airtable' => [
-        'token' => env('AIRTABLE_TOKEN'),
-        'base_id' => env('AIRTABLE_BASE_ID'),
-        'table_id' => env('AIRTABLE_TABLE_ID'),
-        'email_token' => env('EMAIL_AIRTABLE_TOKEN'),
-        'email_base_id' => env('EMAIL_AIRTABLE_BASE_ID'),
-        'email_table_id' => env('EMAIL_AIRTABLE_TABLE_ID'),
+        'token' => env('AIRTABLE_TOKEN', ''),
+        'base_id' => env('AIRTABLE_BASE_ID', ''),
+        'table_id' => env('AIRTABLE_TABLE_ID', ''),
+        'email_token' => env('EMAIL_AIRTABLE_TOKEN', ''),
+        'email_base_id' => env('EMAIL_AIRTABLE_BASE_ID', ''),
+        'email_table_id' => env('EMAIL_AIRTABLE_TABLE_ID', ''),
     ],
 
     'n8n' => [
-        'webhook_url' => env('N8N_WEBHOOK_URL'),
-        'email_form_url' => env('N8N_EMAIL_FORM_URL'),
+        'webhook_url' => env('N8N_WEBHOOK_URL', ''),
+        'email_form_url' => env('N8N_EMAIL_FORM_URL', ''),
     ],
 
 ];
