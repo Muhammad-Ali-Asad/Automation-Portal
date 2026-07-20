@@ -1,0 +1,1024 @@
+{
+  "name": "Linkedin Post Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-request-designer",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9c479828-713d-470a-adcf-664fc066ecbc",
+      "name": "1 · Request (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        752
+      ],
+      "webhookId": "mezz-content-request-designer"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'received', message: 'Your content request has been received. The draft will be sent to the designer for an image before final approval.' }) }}",
+        "options": {}
+      },
+      "id": "469263c1-f2d6-43f0-8ba0-ee1702256368",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        256,
+        752
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ q: $('1 · Request (Webhook)').item.json.body.topic, gl: 'us', num: 5 }) }}",
+        "options": {}
+      },
+      "id": "d6242aac-4326-42c7-ba42-cbe305baf4e5",
+      "name": "2 · Web Research (Serper)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        16,
+        944
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "eAga4YN7hngzAaU0",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const response = $input.item.json;\nconst results = response.organic || [];\n\nconst top = results.slice(0, 5);\n\nlet formatted = top.map((r, i) => {\n  return `${i + 1}. ${r.title}\\nSource: ${r.link}\\nSummary: ${r.snippet || 'No summary available'}`;\n}).join('\\n\\n');\n\nif (!formatted) {\n  formatted = 'No research results were found for this topic.';\n}\n\nreturn {\n  json: {\n    research_text: formatted,\n    sources: top.map(r => r.link)\n  }\n};"
+      },
+      "id": "c3c0e8db-cc84-487e-b5de-9f32610c6e16",
+      "name": "3 · Format Research Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"llama-3.3-70b-versatile\",\n  temperature: 0.7,\n  response_format: { type: \"json_object\" },\n  messages: [\n    {\n      role: \"system\",\n      content: [\n        \"You are a content writer for Mezz (Soft Pyramid). Write ONLY for LinkedIn.\",\n        \"Use the provided research to ground the post in real, current information — reference specific facts, data points, or trends from the research where relevant.\",\n        \"\",\n        \"Return a JSON object with exactly these keys:\",\n        \"- hook (string): attention-grabbing opening line\",\n        \"- post_text (string): main body, plain text only, no markdown, no hashtags inside post_text\",\n        \"- cta (string): call to action aligned with cta_type; use empty string if cta_type is none\",\n        \"- hashtags (array): 5-8 relevant LinkedIn hashtags, each starting with #; return [] if include_hashtags is false\",\n        \"\",\n        \"Rules:\",\n        \"- Respect tone: professional | conversational | inspirational | educational\",\n        \"- Respect post_length: short (~100 words) | medium (~200 words) | long (~350 words)\",\n        \"- Naturally weave in keywords_list when provided\",\n        \"- Write for target_audience when provided\",\n        \"- Follow additional_notes when provided\",\n        \"- Avoid generic hashtags like #business, #success, #motivation\",\n        \"- Respond with valid JSON only.\"\n      ].join(\"\\n\")\n    },\n    {\n      role: \"user\",\n      content: [\n        \"Write a LinkedIn post with these inputs:\",\n        \"\",\n        \"Topic: \" + ($('1 · Request (Webhook)').item.json.body.topic || \"\"),\n        \"Tone: \" + ($('1 · Request (Webhook)').item.json.body.tone || \"professional\"),\n        \"Post length: \" + ($('1 · Request (Webhook)').item.json.body.post_length || \"medium\"),\n        \"Target audience: \" + ($('1 · Request (Webhook)').item.json.body.target_audience || \"general business audience\"),\n        \"Keywords to include: \" + (\n          ($('1 · Request (Webhook)').item.json.body.keywords_list || []).join(\", \") ||\n          ($('1 · Request (Webhook)').item.json.body.keywords || \"none specified\")\n        ),\n        \"Call to action type: \" + ($('1 · Request (Webhook)').item.json.body.cta_type || \"comment\"),\n        \"Include hashtags: \" + ($('1 · Request (Webhook)').item.json.body.include_hashtags !== false ? \"yes\" : \"no\"),\n        \"Additional instructions: \" + ($('1 · Request (Webhook)').item.json.body.additional_notes || \"none\"),\n        \"\",\n        \"CTA guidance by type:\",\n        \"- comment: ask a thoughtful question to drive comments\",\n        \"- share: encourage readers to share with their network\",\n        \"- connect: invite relevant people to connect/message\",\n        \"- visit_link: prompt readers to visit/learn more (no URL required unless provided in notes)\",\n        \"- none: keep cta as empty string\",\n        \"\",\n        \"Here is recent research from US-based sources to inform the post:\",\n        ($json.research_text || \"No research text available.\")\n      ].join(\"\\n\")\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "0ad55070-dac2-4426-b4a2-f72d8673e8e1",
+      "name": "4 · Generate LinkedIn Draft (Groq)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        480,
+        944
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cpS8dufyepKNdD6X",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "topic",
+              "stringValue": "={{ $('1 · Request (Webhook)').item.json.body.topic }}"
+            },
+            {
+              "name": "channel",
+              "stringValue": "linkedin"
+            },
+            {
+              "name": "draft_content",
+              "stringValue": "={{ $json.choices[0].message.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1c17116a-4085-416d-846c-343a9a21f22e",
+      "name": "5 · Prepare Draft Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        0,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"llama-3.3-70b-versatile\",\n  temperature: 0.5,\n  response_format: { type: \"json_object\" },\n  messages: [\n    {\n      role: \"system\",\n      content: \"You are an art director for Mezz. You will receive a LinkedIn post draft. Write a concise creative brief for a graphic designer who will create the accompanying image. Return a JSON object with exactly one key: image_brief (string). The brief must be practical bullet points covering: concept (what the image should show, tied to the post message), composition and focal point, suggested color direction, any short text overlay (5 words max, or none), style (photo / illustration / 3D / flat), and required specs: 1200x627px landscape, PNG or JPG, safe margins for LinkedIn feed cropping, no more than 20% text coverage. Keep the whole brief under 180 words. Respond with valid JSON only.\"\n    },\n    {\n      role: \"user\",\n      content: \"Here is the LinkedIn post draft (JSON):\\n\" + $json.draft_content\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "36fa371e-844e-4430-af6c-4dbc24c69232",
+      "name": "6 · Generate Image Brief (Groq)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        256,
+        1200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cpS8dufyepKNdD6X",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "topic",
+              "stringValue": "={{ $('5 · Prepare Draft Data').item.json.topic }}"
+            },
+            {
+              "name": "channel",
+              "stringValue": "linkedin"
+            },
+            {
+              "name": "draft_content",
+              "stringValue": "={{ $('5 · Prepare Draft Data').item.json.draft_content }}"
+            },
+            {
+              "name": "image_brief",
+              "stringValue": "={{ JSON.parse($json.choices[0].message.content).image_brief }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2a8a6bee-9fc9-4b39-9154-11973eef5ac3",
+      "name": "7 · Prepare Designer Package",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        512,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appSo3isRscpSyhRP",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNyLA2oMEkxCvkv",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Topic": "={{ $json.topic }}",
+            "Channel ": "={{ $json.channel }}",
+            "Draft Content": "={{ $json.draft_content }}",
+            "Created At": "={{ $now.toISO() }}",
+            "Status": "Draft"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Draft",
+                  "value": "Draft"
+                },
+                {
+                  "name": "Approved",
+                  "value": "Approved"
+                },
+                {
+                  "name": "Rejected",
+                  "value": "Rejected"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Channel ",
+              "displayName": "Channel ",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Draft Content",
+              "displayName": "Draft Content",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Created At",
+              "displayName": "Created At",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "710bed73-e170-4dda-933c-426901c20713",
+      "name": "8 · Save Draft to Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        256,
+        1424
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "9TsHi0nHWfKJJEhA",
+          "name": "Airtable Personal Access Token account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "#design-requests"
+        },
+        "text": "=🎨 *New image request — LinkedIn post*\n\n*Topic:* {{ $('7 · Prepare Designer Package').first().json.topic }}\n\n*Post draft:*\n{{ JSON.parse($('7 · Prepare Designer Package').first().json.draft_content).post_text }}\n\n*Image guidelines:*\n{{ $('7 · Prepare Designer Package').first().json.image_brief }}\n\n*When your image is ready, submit it here:*\n{{ $execution.resumeFormUrl }}\n\n_Host the final image anywhere that gives a public direct link (Slack file → copy link, Google Drive, Dropbox, etc.) and paste that link into the form. The workflow continues automatically once you submit._",
+        "otherOptions": {}
+      },
+      "id": "8387a43e-ff4d-4a7e-96d5-dab2f8bcadf1",
+      "name": "9a · Send Brief to Designer (Slack)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        32,
+        1632
+      ],
+      "webhookId": "a1b2c3d4-9a00-4c93-95eb-71f5acf76d1f",
+      "credentials": {
+        "slackApi": {
+          "id": "mRl3q8XkJfamksjh",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "muhammadaliasad007@gmail.com",
+        "subject": "=🎨 Image request: {{ $('7 · Prepare Designer Package').first().json.topic }}",
+        "message": "=<h2>New image request for a LinkedIn post</h2>\n<p><strong>Topic:</strong> {{ $('7 · Prepare Designer Package').first().json.topic }}</p>\n<h3>Post draft</h3>\n<p style=\"white-space:pre-wrap\">{{ JSON.parse($('7 · Prepare Designer Package').first().json.draft_content).post_text }}</p>\n<h3>Image guidelines</h3>\n<p style=\"white-space:pre-wrap\">{{ $('7 · Prepare Designer Package').first().json.image_brief }}</p>\n<h3>How to deliver</h3>\n<p>Host the final image anywhere that gives a public direct link (Slack file, Google Drive, Dropbox…), then paste the link into this form:</p>\n<p><a href=\"{{ $execution.resumeFormUrl }}\" style=\"display:inline-block;padding:10px 18px;background:#0a66c2;color:#fff;border-radius:6px;text-decoration:none\">Submit image →</a></p>\n<p>The workflow continues automatically once you submit.</p>",
+        "options": {}
+      },
+      "id": "dc18ec4e-0455-480b-9f49-6a0907d3d9b9",
+      "name": "9b · Send Brief to Designer (Email)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        432,
+        1600
+      ],
+      "webhookId": "a1b2c3d4-9b00-4684-afef-177c6cfd9ce7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "uPJnen2R1MhWRI4d",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Submit image for LinkedIn post",
+        "formDescription": "=Topic: {{ $('7 · Prepare Designer Package').first().json.topic }} — drag & drop the finished image (1200x627, PNG/JPG, max 5MB).",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Image",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".png,.jpg,.jpeg",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Notes for reviewer"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d7e8b859-713a-4a00-bb01-224ad0939178",
+      "name": "10 · Wait for Designer Image",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        1824
+      ],
+      "webhookId": "a1b2c3d4-1000-4d68-9850-07984ac028aa"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst binary = item.binary && item.binary.Image;\n\nif (!binary) {\n  throw new Error('No uploaded image found on the form submission (expected binary property \"Image\").');\n}\n\nconst buffer = await this.helpers.getBinaryDataBuffer(0, 'Image');\n\nreturn [{\n  json: {\n    file_base64: buffer.toString('base64'),\n    content_type: binary.mimeType || 'image/png',\n    filename: binary.fileName || 'post-image.png',\n    notes: String(item.json['Notes for reviewer'] || '').trim()\n  }\n}];"
+      },
+      "id": "11a59518-ffa6-46f0-aefe-d3360b8df957",
+      "name": "11a · Image to Base64",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        2048
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://content.airtable.com/v0/appSo3isRscpSyhRP/{{ $('8 · Save Draft to Airtable').first().json.id }}/Image/uploadAttachment",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contentType: $json.content_type, file: $json.file_base64, filename: $json.filename }) }}",
+        "options": {}
+      },
+      "id": "78dad059-55f2-482c-b7a8-4b3c6b3fb13f",
+      "name": "11b · Upload Image to Airtable",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        160,
+        2048
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "9TsHi0nHWfKJJEhA",
+          "name": "Airtable Personal Access Token account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $('5 · Prepare Draft Data').first().json.draft_content;\nlet d;\ntry {\n  d = JSON.parse(raw);\n} catch (e) {\n  d = { post_text: raw };\n}\n\nconst parts = [d.hook, d.post_text, d.cta].filter(Boolean);\nlet text = parts.join('\\n\\n');\n\nif (Array.isArray(d.hashtags) && d.hashtags.length) {\n  text += '\\n\\n' + d.hashtags.join(' ');\n}\n\n// Image now lives as an Airtable attachment; grab its URL from the upload response\nlet imageUrl = '';\ntry {\n  const uploaded = $('11b · Upload Image to Airtable').first().json;\n  const attachments = uploaded.fields && uploaded.fields.Image;\n  if (Array.isArray(attachments) && attachments.length) {\n    imageUrl = attachments[0].url || '';\n  }\n} catch (e) {}\n\nconst filename = $('11a · Image to Base64').first().json.filename;\nconst notes = $('11a · Image to Base64').first().json.notes;\n\nreturn [{\n  json: {\n    final_text: text,\n    image_url: imageUrl || filename,\n    designer_notes: notes,\n    topic: $('5 · Prepare Draft Data').first().json.topic\n  }\n}];"
+      },
+      "id": "971b8069-c34c-421f-900e-a95035a5dfea",
+      "name": "12 · Compose Final Post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        2048
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "sendTo": "maliasad615@gmail.com",
+        "subject": "=Review in portal: LinkedIn post — {{ $json.topic }}",
+        "message": "=A LinkedIn post is ready for review in SP Automation Portal.\n\nTopic: {{ $json.topic }}\n\nOpen the portal to edit, approve, or reject the post:\nhttp://localhost:8000/linkedin\n\n--- PREVIEW ---\n{{ $json.final_text }}\n\n--- IMAGE ---\n{{ $json.image_url }}\n\nDesigner notes: {{ $json.designer_notes || 'none' }}",
+        "options": {}
+      },
+      "id": "10727626-5ddc-482c-9c11-631cf25db95b",
+      "name": "13a · Notify Reviewer (Email)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        608,
+        2048
+      ],
+      "webhookId": "a1b2c3d4-1300-4c93-95eb-71f5acf76222",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "uPJnen2R1MhWRI4d",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appSo3isRscpSyhRP",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNyLA2oMEkxCvkv",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('8 · Save Draft to Airtable').first().json.id }}",
+            "Resume URL": "={{ $execution.resumeUrl }}"
+          },
+          "matchingColumns": [
+            "id"
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1400-4c93-95eb-71f5acf76223",
+      "name": "12b · Save Resume URL (Airtable)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        480,
+        2048
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "9TsHi0nHWfKJJEhA",
+          "name": "Airtable Personal Access Token account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {}
+      },
+      "id": "a1b2c3d4-1500-4c93-95eb-71f5acf76224",
+      "name": "13b · Wait for Portal Decision",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        768,
+        2048
+      ],
+      "webhookId": "a1b2c3d4-1500-4c93-95eb-71f5acf76225"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "44366a24-cc72-47b1-bbd9-c69f6083a8a2",
+      "name": "14 · Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        320,
+        2288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const uploadItem = $('10 · Wait for Designer Image').first();\n\nif (!uploadItem.binary || !uploadItem.binary.Image) {\n  throw new Error('Uploaded image binary not found on \"10 · Wait for Designer Image\".');\n}\n\nconst waitPayload = $('13b · Wait for Portal Decision').first().json.body ?? {};\nconst finalText = waitPayload.final_text || $('12 · Compose Final Post').first().json.final_text;\n\nreturn [{\n  json: {\n    final_text: finalText\n  },\n  binary: {\n    data: uploadItem.binary.Image\n  }\n}];"
+      },
+      "id": "c220580f-a307-4fae-97c2-4c00014b6619",
+      "name": "15 · Prepare Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.final_text }}",
+        "shareMediaCategory": "IMAGE",
+        "additionalFields": {}
+      },
+      "id": "0da57b52-2084-4b18-9c40-c728e358f325",
+      "name": "16 · Publish to LinkedIn",
+      "type": "n8n-nodes-base.linkedIn",
+      "typeVersion": 1,
+      "position": [
+        224,
+        2512
+      ],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "6WMaz7wa4TL3jBdH",
+          "name": "LinkedIn account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appSo3isRscpSyhRP",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNyLA2oMEkxCvkv",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('8 · Save Draft to Airtable').first().json.id }}",
+            "Status": "Approved"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Draft",
+                  "value": "Draft"
+                },
+                {
+                  "name": "Approved",
+                  "value": "Approved"
+                },
+                {
+                  "name": "Rejected",
+                  "value": "Rejected"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "55f1044f-c4d8-4e1b-bbdf-76fc1149f5fd",
+      "name": "17 · Mark Approved (Airtable)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        400,
+        2752
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "9TsHi0nHWfKJJEhA",
+          "name": "Airtable Personal Access Token account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appSo3isRscpSyhRP",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNyLA2oMEkxCvkv",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('8 · Save Draft to Airtable').first().json.id }}",
+            "Status": "Rejected"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Draft",
+                  "value": "Draft"
+                },
+                {
+                  "name": "Approved",
+                  "value": "Approved"
+                },
+                {
+                  "name": "Rejected",
+                  "value": "Rejected"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7d1a84b0-eca3-4848-9476-ae909dbf0baa",
+      "name": "18 · Mark Rejected (Airtable)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        656,
+        2416
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "9TsHi0nHWfKJJEhA",
+          "name": "Airtable Personal Access Token account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "1 · Request (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "2 · Web Research (Serper)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2 · Web Research (Serper)": {
+      "main": [
+        [
+          {
+            "node": "3 · Format Research Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3 · Format Research Results": {
+      "main": [
+        [
+          {
+            "node": "4 · Generate LinkedIn Draft (Groq)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4 · Generate LinkedIn Draft (Groq)": {
+      "main": [
+        [
+          {
+            "node": "5 · Prepare Draft Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5 · Prepare Draft Data": {
+      "main": [
+        [
+          {
+            "node": "6 · Generate Image Brief (Groq)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6 · Generate Image Brief (Groq)": {
+      "main": [
+        [
+          {
+            "node": "7 · Prepare Designer Package",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7 · Prepare Designer Package": {
+      "main": [
+        [
+          {
+            "node": "8 · Save Draft to Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8 · Save Draft to Airtable": {
+      "main": [
+        [
+          {
+            "node": "9a · Send Brief to Designer (Slack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "9b · Send Brief to Designer (Email)": {
+      "main": [
+        [
+          {
+            "node": "10 · Wait for Designer Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 · Wait for Designer Image": {
+      "main": [
+        [
+          {
+            "node": "11a · Image to Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11a · Image to Base64": {
+      "main": [
+        [
+          {
+            "node": "11b · Upload Image to Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11b · Upload Image to Airtable": {
+      "main": [
+        [
+          {
+            "node": "12 · Compose Final Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12 · Compose Final Post": {
+      "main": [
+        [
+          {
+            "node": "13a · Notify Reviewer (Email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "13a · Notify Reviewer (Email)": {
+      "main": [
+        [
+          {
+            "node": "12b · Save Resume URL (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12b · Save Resume URL (Airtable)": {
+      "main": [
+        [
+          {
+            "node": "13b · Wait for Portal Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "13b · Wait for Portal Decision": {
+      "main": [
+        [
+          {
+            "node": "14 · Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "14 · Approved?": {
+      "main": [
+        [
+          {
+            "node": "15 · Prepare Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "18 · Mark Rejected (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "15 · Prepare Image": {
+      "main": [
+        [
+          {
+            "node": "16 · Publish to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16 · Publish to LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "17 · Mark Approved (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "9a · Send Brief to Designer (Slack)": {
+      "main": [
+        [
+          {
+            "node": "9b · Send Brief to Designer (Email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9b812629-fb8b-4539-a4df-1711383bebcb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "769c8914699e3048ee612fa13829b0c1b60877022fbf8372bd3371f91d5f5ed1"
+  },
+  "id": "wAJbTrwXsH8GLUHX",
+  "tags": []
+}

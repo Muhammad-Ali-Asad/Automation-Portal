@@ -1,5 +1,4 @@
 import { Head, Link } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
 import { StatusBadge } from '@/components/portal/StatusBadge';
 import { dashboard, linkedin, email } from '@/routes';
 import type { Draft, EmailRecord } from '@/types/portal';
@@ -100,76 +99,22 @@ function QuickLink({
     );
 }
 
+interface DashboardPageProps {
+    initialDrafts: Draft[];
+    initialEmails: EmailRecord[];
+    stats: Stats;
+}
+
 // ── page ─────────────────────────────────────────────────────────────────────
 
-export default function Dashboard() {
-    const [drafts, setDrafts] = useState<Draft[]>([]);
-    const [emails, setEmails] = useState<EmailRecord[]>([]);
-    const [stats, setStats] = useState<Stats>({
-        totalDrafts: 0,
-        totalEmails: 0,
-        approvedDrafts: 0,
-        publishedDrafts: 0,
-        n8nOk: null,
-    });
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        async function load() {
-            try {
-                const [draftsRes, emailsRes, n8nRes] = await Promise.allSettled(
-                    [
-                        fetch('/api/drafts').then((r) => r.json()),
-                        fetch('/api/emails').then((r) => r.json()),
-                        fetch('/api/n8n-status').then((r) => r.json()),
-                    ],
-                );
-
-                if (cancelled) {
-                    return;
-                }
-
-                const draftList: Draft[] =
-                    draftsRes.status === 'fulfilled'
-                        ? (draftsRes.value.drafts ?? [])
-                        : [];
-                const emailList: EmailRecord[] =
-                    emailsRes.status === 'fulfilled'
-                        ? (emailsRes.value.emails ?? [])
-                        : [];
-                const n8nOk: boolean | null =
-                    n8nRes.status === 'fulfilled'
-                        ? Boolean(n8nRes.value.ok)
-                        : null;
-
-                setDrafts(draftList.slice(0, 5));
-                setEmails(emailList.slice(0, 5));
-                setStats({
-                    totalDrafts: draftList.length,
-                    totalEmails: emailList.length,
-                    approvedDrafts: draftList.filter(
-                        (d) => d.status?.toLowerCase() === 'approved',
-                    ).length,
-                    publishedDrafts: draftList.filter(
-                        (d) => d.status?.toLowerCase() === 'published',
-                    ).length,
-                    n8nOk,
-                });
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
-            }
-        }
-
-        void load();
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+export default function Dashboard({
+    initialDrafts,
+    initialEmails,
+    stats,
+}: DashboardPageProps) {
+    const drafts = initialDrafts;
+    const emails = initialEmails;
+    const loading = false;
 
     const now = new Date();
     const greeting =

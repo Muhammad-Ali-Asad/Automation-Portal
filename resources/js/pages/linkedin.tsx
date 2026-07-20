@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RefreshCw, Loader2 } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DetailModal } from '@/components/portal/DetailModal';
 import { DraftCard } from '@/components/portal/DraftCard';
@@ -52,9 +52,19 @@ async function fetchDrafts(): Promise<Draft[]> {
     return data.drafts ?? [];
 }
 
-export default function LinkedIn() {
-    const [drafts, setDrafts] = useState<Draft[]>([]);
-    const [loading, setLoading] = useState(true);
+interface LinkedInPageProps {
+    initialDrafts: Draft[];
+    canCreateContent?: boolean;
+    canReviewContent?: boolean;
+}
+
+export default function LinkedIn({
+    initialDrafts,
+    canCreateContent = true,
+    canReviewContent = false,
+}: LinkedInPageProps) {
+    const [drafts, setDrafts] = useState<Draft[]>(initialDrafts);
+    const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState('all');
     const [selectedDraft, setSelectedDraft] = useState<Draft | null>(null);
 
@@ -87,34 +97,12 @@ export default function LinkedIn() {
         }
     }, []);
 
-    useEffect(() => {
-        let cancelled = false;
-
-        void (async () => {
-            try {
-                const records = await fetchDrafts();
-
-                if (!cancelled) {
-                    setDrafts(records);
-                }
-            } catch (err: unknown) {
-                if (!cancelled) {
-                    const message =
-                        err instanceof Error ? err.message : 'Unknown error';
-
-                    toast.error(message);
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
+    function handleDraftUpdated(updated: Draft) {
+        setDrafts((prev) =>
+            prev.map((draft) => (draft.id === updated.id ? updated : draft)),
+        );
+        setSelectedDraft(updated);
+    }
 
     function pollForNewDraft(topicText: string) {
         [15000, 40000, 80000, 130000].forEach((delay) => {
@@ -183,7 +171,7 @@ export default function LinkedIn() {
             <Head title="LinkedIn Posts" />
 
             <div className="flex flex-col gap-6 p-4 md:p-6">
-                {/* Request form */}
+                {canCreateContent ? (
                 <section className="rounded-xl border bg-card p-5 shadow-sm">
                     <h2 className="mb-1 text-lg font-semibold">
                         New LinkedIn post
@@ -383,6 +371,7 @@ export default function LinkedIn() {
                         </div>
                     </form>
                 </section>
+                ) : null}
 
                 {/* Toolbar */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -468,7 +457,9 @@ export default function LinkedIn() {
                 item={selectedDraft}
                 type="draft"
                 airtableBaseId={AIRTABLE_BASE_ID}
+                canReview={canReviewContent}
                 onClose={() => setSelectedDraft(null)}
+                onDraftUpdated={handleDraftUpdated}
             />
         </>
     );

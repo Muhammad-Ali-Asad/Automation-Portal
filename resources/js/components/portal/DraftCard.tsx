@@ -17,13 +17,17 @@ function parseDraftContent(raw: string): DraftContent | null {
 }
 
 function getPreviewText(draft: Draft): string {
-    const parsed = parseDraftContent(draft.draftContent);
+    if (draft.previewText) {
+        return draft.previewText;
+    }
+
+    const parsed = parseDraftContent(draft.draftContent ?? '');
 
     if (!parsed) {
         return draft.draftContent || 'No content yet';
     }
 
-    return parsed.post_text || parsed.hook || draft.draftContent;
+    return parsed.post_text || parsed.hook || draft.draftContent || 'No content yet';
 }
 
 export function DraftCard({ draft, index, onClick }: Props) {

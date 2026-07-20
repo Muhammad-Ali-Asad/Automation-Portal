@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RefreshCw, Loader2 } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { DetailModal } from '@/components/portal/DetailModal';
 import { EmailCard } from '@/components/portal/EmailCard';
@@ -47,9 +47,17 @@ async function fetchEmails(): Promise<EmailRecord[]> {
     return data.emails ?? [];
 }
 
-export default function Email() {
-    const [emails, setEmails] = useState<EmailRecord[]>([]);
-    const [loading, setLoading] = useState(true);
+interface EmailPageProps {
+    initialEmails: EmailRecord[];
+    canCreateContent?: boolean;
+}
+
+export default function Email({
+    initialEmails,
+    canCreateContent = true,
+}: EmailPageProps) {
+    const [emails, setEmails] = useState<EmailRecord[]>(initialEmails);
+    const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState('all');
     const [selectedEmail, setSelectedEmail] = useState<EmailRecord | null>(
         null,
@@ -75,35 +83,6 @@ export default function Email() {
         } finally {
             setLoading(false);
         }
-    }, []);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        void (async () => {
-            try {
-                const records = await fetchEmails();
-
-                if (!cancelled) {
-                    setEmails(records);
-                }
-            } catch (err: unknown) {
-                if (!cancelled) {
-                    const message =
-                        err instanceof Error ? err.message : 'Unknown error';
-
-                    toast.error(message);
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-        };
     }, []);
 
     function setField(field: keyof ContactForm) {
@@ -157,7 +136,7 @@ export default function Email() {
             <Head title="Email Outreach" />
 
             <div className="flex flex-col gap-6 p-4 md:p-6">
-                {/* Request form */}
+                {canCreateContent ? (
                 <section className="rounded-xl border bg-card p-5 shadow-sm">
                     <h2 className="mb-1 text-lg font-semibold">
                         New outreach email
@@ -239,6 +218,7 @@ export default function Email() {
                         </div>
                     </form>
                 </section>
+                ) : null}
 
                 {/* Toolbar */}
                 <div className="flex flex-wrap items-center justify-between gap-3">

@@ -10,10 +10,13 @@ class N8nService
 
     private string $emailFormUrl;
 
+    private string $linkedinReviewWebhookUrl;
+
     public function __construct()
     {
         $this->webhookUrl = (string) (config('services.n8n.webhook_url') ?? '');
         $this->emailFormUrl = (string) (config('services.n8n.email_form_url') ?? '');
+        $this->linkedinReviewWebhookUrl = (string) (config('services.n8n.linkedin_review_webhook_url') ?? '');
     }
 
     /**
@@ -62,6 +65,51 @@ class N8nService
             'ok' => $response->successful(),
             'status' => $response->status(),
             'body' => $response->body(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function resumeLinkedInReview(string $resumeUrl, bool $approved, string $finalText): array
+    {
+        if (! $resumeUrl) {
+            throw new \RuntimeException('No n8n resume URL is available for this draft.');
+        }
+
+        $response = Http::withHeaders(['Content-Type' => 'application/json'])
+            ->post($resumeUrl, [
+                'approved' => $approved,
+                'final_text' => $finalText,
+            ]);
+
+        return [
+            'ok' => $response->successful(),
+            'status' => $response->status(),
+            'body' => $response->json() ?? ['raw' => $response->body()],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function triggerLinkedInReviewFallback(string $recordId, bool $approved, string $finalText): array
+    {
+        if (! $this->linkedinReviewWebhookUrl) {
+            throw new \RuntimeException('N8N_LINKEDIN_REVIEW_WEBHOOK_URL is not configured in .env');
+        }
+
+        $response = Http::withHeaders(['Content-Type' => 'application/json'])
+            ->post($this->linkedinReviewWebhookUrl, [
+                'record_id' => $recordId,
+                'approved' => $approved,
+                'final_text' => $finalText,
+            ]);
+
+        return [
+            'ok' => $response->successful(),
+            'status' => $response->status(),
+            'body' => $response->json() ?? ['raw' => $response->body()],
         ];
     }
 

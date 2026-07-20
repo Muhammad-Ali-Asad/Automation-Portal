@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\N8nService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class N8nController extends Controller
 {
@@ -100,8 +101,8 @@ class N8nController extends Controller
 
     public function status(): JsonResponse
     {
-        $result = $this->n8n->healthCheck();
+        $result = Cache::remember('portal.n8n.status.full', 30, fn () => $this->n8n->healthCheck());
 
-        return response()->json($result, $result['ok'] ? 200 : 502);
+        return response()->json($result, ($result['ok'] ?? false) ? 200 : 502);
     }
 }

@@ -2,9 +2,11 @@ export interface Draft {
     id: string;
     topic: string;
     channel: string;
-    draftContent: string;
+    draftContent?: string;
+    previewText?: string;
     status: string;
     imageUrl: string;
+    resumeUrl?: string;
     createdAt: string | null;
 }
 
@@ -39,9 +41,10 @@ export interface EmailRecord {
     email: string;
     phone: string;
     companyName: string;
-    painPoints: string;
-    hook: string;
-    finalEmail: string;
+    painPoints?: string;
+    hook?: string;
+    finalEmail?: string;
+    previewText?: string;
     decision: string;
     createdAt: string | null;
 }

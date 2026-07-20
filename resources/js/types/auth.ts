@@ -1,7 +1,20 @@
+export type UserRole = 'super_admin' | 'admin' | 'editor' | 'viewer';
+
+export type UserAbilities = {
+    manageUsers: boolean;
+    createContent: boolean;
+    reviewContent: boolean;
+    viewDashboard: boolean;
+    viewLinkedIn: boolean;
+    viewEmail: boolean;
+};
+
 export type User = {
     id: number;
     name: string;
     email: string;
+    role: UserRole;
+    roleLabel: string;
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
@@ -11,7 +24,8 @@ export type User = {
 };
 
 export type Auth = {
-    user: User;
+    user: User | null;
+    abilities: UserAbilities;
 };
 
 /* @chisel-passkeys */

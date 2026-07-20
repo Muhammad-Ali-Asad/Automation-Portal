@@ -47,6 +47,11 @@ return [
     'n8n' => [
         'webhook_url' => env('N8N_WEBHOOK_URL', ''),
         'email_form_url' => env('N8N_EMAIL_FORM_URL', ''),
+        'linkedin_review_webhook_url' => env('N8N_LINKEDIN_REVIEW_WEBHOOK_URL', ''),
+    ],
+
+    'portal' => [
+        'cache_ttl' => env('PORTAL_CACHE_TTL', 60),
     ],
 
 ];

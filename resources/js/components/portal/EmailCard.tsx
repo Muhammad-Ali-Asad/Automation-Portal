@@ -41,9 +41,9 @@ export function EmailCard({ email, index, onClick }: Props) {
                         )}
                         {email.email}
                     </p>
-                    {email.finalEmail && (
+                    {(email.previewText || email.finalEmail) && (
                         <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                            {email.finalEmail}
+                            {email.previewText || email.finalEmail}
                         </p>
                     )}
                     <p className="text-xs text-muted-foreground">

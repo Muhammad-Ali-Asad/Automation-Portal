@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\DraftContent;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 class AirtableService
@@ -27,6 +29,23 @@ class AirtableService
         $this->emailToken = (string) (config('services.airtable.email_token') ?: $this->token);
         $this->emailBaseId = (string) (config('services.airtable.email_base_id') ?? '');
         $this->emailTableId = (string) (config('services.airtable.email_table_id') ?? '');
+    }
+
+    private function cacheTtl(): int
+    {
+        return max(15, (int) (config('services.portal.cache_ttl', 60)));
+    }
+
+    public function clearDraftsCache(): void
+    {
+        Cache::forget('portal.airtable.drafts');
+        Cache::forget('portal.airtable.drafts.full');
+    }
+
+    public function clearEmailsCache(): void
+    {
+        Cache::forget('portal.airtable.emails');
+        Cache::forget('portal.airtable.emails.full');
     }
 
     private function normalizeImageUrl(?string $url): string
@@ -62,6 +81,8 @@ class AirtableService
             }
 
             $response = Http::withToken($token)
+                ->timeout(15)
+                ->connectTimeout(5)
                 ->get("https://api.airtable.com/v0/{$baseId}/{$tableId}", $params);
 
             if (! $response->successful()) {
@@ -97,6 +118,41 @@ class AirtableService
      * @param  array<string, mixed>  $record
      * @return array<string, mixed>
      */
+    private function mapDraftSummary(array $record): array
+    {
+        $draft = $this->mapDraft($record);
+        $parsed = DraftContent::parse((string) $draft['draftContent']);
+
+        unset($draft['draftContent'], $draft['resumeUrl']);
+
+        $draft['previewText'] = $parsed['post_text'] !== ''
+            ? $parsed['post_text']
+            : ($parsed['hook'] !== '' ? $parsed['hook'] : 'No content yet');
+
+        return $draft;
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @return array<string, mixed>
+     */
+    private function mapEmailSummary(array $record): array
+    {
+        $email = $this->mapEmail($record);
+        $preview = trim((string) $email['finalEmail']);
+        $email['previewText'] = $preview !== ''
+            ? mb_strimwidth($preview, 0, 180, '…')
+            : '';
+
+        unset($email['painPoints'], $email['hook'], $email['finalEmail']);
+
+        return $email;
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @return array<string, mixed>
+     */
     private function mapDraft(array $record): array
     {
         $fields = $record['fields'] ?? [];
@@ -111,6 +167,7 @@ class AirtableService
             'draftContent' => $fields['Draft Content'] ?? '',
             'status' => $fields['Status'] ?? 'Draft',
             'imageUrl' => $this->normalizeImageUrl($rawImageUrl),
+            'resumeUrl' => trim((string) ($fields['Resume URL'] ?? '')),
             'createdAt' => $fields['Created At'] ?? $record['createdTime'] ?? null,
         ];
     }
@@ -141,11 +198,42 @@ class AirtableService
     /**
      * @return list<array<string, mixed>>
      */
+    public function listDraftSummaries(): array
+    {
+        $this->ensureConfigured($this->token, $this->baseId, $this->tableId, 'AIRTABLE_TOKEN / AIRTABLE_BASE_ID / AIRTABLE_TABLE_ID');
+
+        return Cache::remember('portal.airtable.drafts', $this->cacheTtl(), function () {
+            return $this->paginate($this->baseId, $this->tableId, $this->token, [$this, 'mapDraftSummary']);
+        });
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
     public function listDrafts(): array
     {
         $this->ensureConfigured($this->token, $this->baseId, $this->tableId, 'AIRTABLE_TOKEN / AIRTABLE_BASE_ID / AIRTABLE_TABLE_ID');
 
-        return $this->paginate($this->baseId, $this->tableId, $this->token, [$this, 'mapDraft']);
+        return Cache::remember('portal.airtable.drafts.full', $this->cacheTtl(), function () {
+            return $this->paginate($this->baseId, $this->tableId, $this->token, [$this, 'mapDraft']);
+        });
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function listEmailSummaries(): array
+    {
+        $this->ensureConfigured(
+            $this->emailToken,
+            $this->emailBaseId,
+            $this->emailTableId,
+            'EMAIL_AIRTABLE_TOKEN (or AIRTABLE_TOKEN) / EMAIL_AIRTABLE_BASE_ID / EMAIL_AIRTABLE_TABLE_ID'
+        );
+
+        return Cache::remember('portal.airtable.emails', $this->cacheTtl(), function () {
+            return $this->paginate($this->emailBaseId, $this->emailTableId, $this->emailToken, [$this, 'mapEmailSummary']);
+        });
     }
 
     /**
@@ -156,6 +244,8 @@ class AirtableService
         $this->ensureConfigured($this->token, $this->baseId, $this->tableId, 'AIRTABLE_TOKEN / AIRTABLE_BASE_ID / AIRTABLE_TABLE_ID');
 
         $response = Http::withToken($this->token)
+            ->timeout(15)
+            ->connectTimeout(5)
             ->get("https://api.airtable.com/v0/{$this->baseId}/{$this->tableId}/{$id}");
 
         if (! $response->successful()) {
@@ -163,6 +253,30 @@ class AirtableService
         }
 
         return $this->mapDraft($response->json());
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array<string, mixed>
+     */
+    public function updateDraft(string $id, array $fields): array
+    {
+        $response = Http::withToken($this->token)
+            ->timeout(15)
+            ->connectTimeout(5)
+            ->patch("https://api.airtable.com/v0/{$this->baseId}/{$this->tableId}/{$id}", [
+                'fields' => $fields,
+            ]);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException("Airtable error ({$response->status()}): {$response->body()}");
+        }
+
+        $draft = $this->mapDraft($response->json());
+
+        $this->clearDraftsCache();
+
+        return $draft;
     }
 
     /**
@@ -177,7 +291,33 @@ class AirtableService
             'EMAIL_AIRTABLE_TOKEN (or AIRTABLE_TOKEN) / EMAIL_AIRTABLE_BASE_ID / EMAIL_AIRTABLE_TABLE_ID'
         );
 
-        return $this->paginate($this->emailBaseId, $this->emailTableId, $this->emailToken, [$this, 'mapEmail']);
+        return Cache::remember('portal.airtable.emails.full', $this->cacheTtl(), function () {
+            return $this->paginate($this->emailBaseId, $this->emailTableId, $this->emailToken, [$this, 'mapEmail']);
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getEmail(string $id): array
+    {
+        $this->ensureConfigured(
+            $this->emailToken,
+            $this->emailBaseId,
+            $this->emailTableId,
+            'EMAIL_AIRTABLE_TOKEN (or AIRTABLE_TOKEN) / EMAIL_AIRTABLE_BASE_ID / EMAIL_AIRTABLE_TABLE_ID'
+        );
+
+        $response = Http::withToken($this->emailToken)
+            ->timeout(15)
+            ->connectTimeout(5)
+            ->get("https://api.airtable.com/v0/{$this->emailBaseId}/{$this->emailTableId}/{$id}");
+
+        if (! $response->successful()) {
+            throw new \RuntimeException("Airtable error ({$response->status()}): {$response->body()}");
+        }
+
+        return $this->mapEmail($response->json());
     }
 
     private function ensureConfigured(string $token, string $baseId, string $tableId, string $keys): void
